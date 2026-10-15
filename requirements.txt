@@ -1,0 +1,13 @@
+# wechat-persona-profile — 依赖清单
+#
+# 本 skill 本体（scripts/fetch_chat.py）仅依赖 Python 3.10+ 标准库，无第三方 Python 包。
+#
+# 唯一外部硬依赖是 wechat-cli（用于读取微信聊天记录）。下方列出 wechat-cli 0.2.4 的
+# 运行时依赖：在 `pip install -e .`（从 GitHub 源码安装 wechat-cli）时会自动安装，
+# 此处单独列出仅供依赖审计 / 离线预装参考。
+#
+# 注：wechat-cli 已从 PyPI 官方源下架，需从 GitHub 源码安装，详见 README「安装 wechat-cli」。
+
+click>=8.1,<9
+pycryptodome>=3.19,<4
+zstandard>=0.22,<1
