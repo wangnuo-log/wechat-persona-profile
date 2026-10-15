@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>微信人物画像报告</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#0d1117; --panel:#161b22; --panel2:#1c2330; --line:#2d3748;
+  --txt:#e6edf3; --dim:#8b98a9; --blue:#4d9fff; --deep:#1e3a5f;
+  --lvl5:#ff6b8a; --lvl4:#ffb84d; --lvl3:#4dd599; --lvl2:#4d9fff; --lvl1:#8b98a9;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:linear-gradient(160deg,#0a0e14,#0d1117 40%,#101826);color:var(--txt);
+  font-family:"Microsoft YaHei","PingFang SC",sans-serif;padding:32px 16px;min-height:100vh}
+.wrap{max-width:960px;margin:0 auto}
+.hero{display:flex;gap:28px;align-items:center;background:var(--panel);
+  border:1px solid var(--line);border-radius:16px;padding:28px;margin-bottom:20px;flex-wrap:wrap}
+.hero img{width:180px;height:180px;border-radius:20px;object-fit:cover;
+  border:2px solid var(--blue);box-shadow:0 0 24px rgba(77,159,255,.35)}
+.hero .info{flex:1;min-width:240px}
+.hero h1{font-size:26px;margin-bottom:6px}
+.hero .oneline{color:var(--blue);font-size:15px;margin-bottom:14px}
+.hero .meta{color:var(--dim);font-size:13px;line-height:1.9}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:24px;margin-bottom:20px}
+.panel h2{font-size:18px;margin-bottom:16px;padding-left:10px;border-left:3px solid var(--blue)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+@media(max-width:760px){.grid2{grid-template-columns:1fr}}
+.score-big{text-align:center;padding:10px 0 4px}
+.score-big .num{font-size:56px;font-weight:700;
+  background:linear-gradient(120deg,#4d9fff,#7cc0ff);-webkit-background-clip:text;background-clip:text;color:transparent}
+.score-big .lvl{display:inline-block;margin-top:6px;padding:4px 18px;border-radius:999px;font-size:15px;font-weight:600}
+.conf{color:var(--dim);font-size:12px;margin-top:8px}
+.dim-list{margin-top:8px}
+.dim-item{display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px dashed var(--line)}
+.dim-item:last-child{border-bottom:none}
+.dim-item .name{width:76px;font-size:13px;color:var(--dim)}
+.dim-item .bar{flex:1;height:10px;background:var(--panel2);border-radius:5px;overflow:hidden}
+.dim-item .fill{height:100%;border-radius:5px;background:linear-gradient(90deg,#1e3a5f,#4d9fff)}
+.dim-item .val{width:36px;text-align:right;font-size:13px;font-weight:600}
+.evidence{background:var(--panel2);border-left:3px solid var(--deep);border-radius:0 8px 8px 0;
+  padding:10px 14px;margin:10px 0;font-size:13px;color:var(--dim);line-height:1.7;font-style:italic}
+.tags{display:flex;flex-wrap:wrap;gap:10px}
+.tag{background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:6px 16px;font-size:13px}
+.tag b{color:var(--blue);font-weight:600}
+.radar-wrap{position:relative;height:300px}
+canvas{max-width:100%}
+table.tb{width:100%;border-collapse:collapse;font-size:13px}
+table.tb th,table.tb td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left}
+table.tb th{color:var(--dim);font-weight:500}
+table.tb td:last-child,table.tb th:last-child{text-align:right}
+.footnote{color:var(--dim);font-size:12px;line-height:1.9}
+.monthly{height:180px}
+.method p{margin-bottom:10px;line-height:1.9;font-size:13px;color:var(--dim)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- 头部：Q版形象 + 一句话人设 -->
+  <div class="hero">
+    <img id="avatar" src="__AVATAR_B64__" alt="Q版形象">
+    <div class="info">
+      <h1>__NAME__ 的微信人物画像</h1>
+      <div class="oneline">__ONE_LINER__</div>
+      <div class="meta">
+        数据范围：__DATE_RANGE__ ｜ 有效消息 __TOTAL_MSGS__ 条 ｜ 活跃 __ACTIVE_DAYS__ 天<br>
+        会话段 __SESSIONS__ 个（对方主动发起 __OTHER_INIT__ 次）｜ 报告生成：__GEN_TIME__
+      </div>
+    </div>
+  </div>
+
+  <!-- 好感度 -->
+  <div class="panel">
+    <h2>好感度评估 <span style="font-size:12px;color:var(--dim);font-weight:400">（对机主 · 多维加权模型）</span></h2>
+    <div class="grid2">
+      <div class="score-big">
+        <div class="num" id="scoreNum">__SCORE__</div>
+        <div><span class="lvl" id="lvlBadge">__LEVEL__</span></div>
+        <div class="conf">__CONFIDENCE__</div>
+      </div>
+      <div class="dim-list" id="dimList">__DIM_ITEMS__</div>
+    </div>
+    <div class="evidence">__AFFINITY_EVIDENCE__</div>
+    <div style="margin-top:18px"><canvas id="monthlyChart" class="monthly"></canvas></div>
+  </div>
+
+  <!-- 大五人格 -->
+  <div class="panel">
+    <h2>心理学画像 · 大五人格</h2>
+    <div class="grid2">
+      <div class="radar-wrap"><canvas id="radar"></canvas></div>
+      <div>
+        <table class="tb" id="fiveTable">__FIVE_TABLE__</table>
+        <div class="evidence">__FIVE_EVIDENCE__</div>
+      </div>
+    </div>
+    <div style="margin-top:16px">
+      <h2 style="font-size:15px;border:none;padding:0;margin-bottom:12px">行为标签</h2>
+      <div class="tags">__TAGS__</div>
+    </div>
+  </div>
+
+  <!-- 数据摘要 -->
+  <div class="panel">
+    <h2>数据摘要</h2>
+    <div class="grid2">
+      <div>
+        <table class="tb">__SUMMARY_TABLE__</table>
+      </div>
+      <div class="radar-wrap" style="height:260px"><canvas id="hourChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- 方法论 -->
+  <div class="panel method">
+    <h2>方法论与局限</h2>
+    __METHOD_HTML__
+  </div>
+
+</div>
+
+<script>
+/* ---- 雷达图：大五 ---- */
+const five = __FIVE_JSON__;
+new Chart(document.getElementById('radar'), {
+  type: 'radar',
+  data: {
+    labels: ['开放性','尽责性','外向性','宜人性','神经质'],
+    datasets: [{
+      label: '人格画像',
+      data: [five.openness.score, five.conscientiousness.score, five.extraversion.score,
+             five.agreeableness.score, five.neuroticism.score],
+      backgroundColor: 'rgba(77,159,255,.25)',
+      borderColor: '#4d9fff', borderWidth: 2,
+      pointBackgroundColor: '#7cc0ff'
+    }]
+  },
+  options: {scales: {r: {min: 0, max: 100, ticks: {display: false},
+    grid: {color: '#2d3748'}, angleLines: {color: '#2d3748'},
+    pointLabels: {color: '#e6edf3', font: {size: 13}}}},
+    plugins: {legend: {display: false}}, maintainAspectRatio: false}
+});
+
+/* ---- 活跃时段直方图 ---- */
+const hours = __HOUR_JSON__;
+new Chart(document.getElementById('hourChart'), {
+  type: 'bar',
+  data: {
+    labels: Object.keys(hours).map(h => h + '时'),
+    datasets: [{data: Object.values(hours), backgroundColor: '#1e3a5f',
+      borderColor: '#4d9fff', borderWidth: 1}]
+  },
+  options: {plugins: {legend: {display: false}},
+    scales: {x: {ticks: {color: '#8b98a9', maxRotation: 90, autoSkip: true}, grid: {display: false}},
+             y: {ticks: {color: '#8b98a9'}, grid: {color: '#1c2330'}}},
+    maintainAspectRatio: false}
+});
+
+/* ---- 月度互动趋势 ---- */
+const monthly = __MONTHLY_JSON__;
+new Chart(document.getElementById('monthlyChart'), {
+  type: 'line',
+  data: {
+    labels: Object.keys(monthly),
+    datasets: [
+      {label: '对方', data: Object.values(monthly).map(m => m.other),
+       borderColor: '#4d9fff', backgroundColor: 'rgba(77,159,255,.15)', fill: true, tension: .35},
+      {label: '我', data: Object.values(monthly).map(m => m.self),
+       borderColor: '#8b98a9', borderDash: [5,4], fill: false, tension: .35, pointRadius: 2}
+    ]
+  },
+  options: {plugins: {legend: {labels: {color: '#e6edf3'}}},
+    scales: {x: {ticks: {color: '#8b98a9', maxTicksLimit: 12}, grid: {display: false}},
+             y: {ticks: {color: '#8b98a9'}, grid: {color: '#1c2330'}}},
+    maintainAspectRatio: false}
+});
+</script>
+</body>
+</html>
